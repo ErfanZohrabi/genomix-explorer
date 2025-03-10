@@ -1,3 +1,4 @@
+
 import { ResultItem, DatabaseSource } from "../components/ResultCard";
 
 // Simulate API delay for development/demo
@@ -70,6 +71,42 @@ const mockResults: Record<string, ResultItem[]> = {
         stars: "124",
         language: "Python"
       }
+    },
+    {
+      id: "pdb-1jm7",
+      title: "BRCA1 RING domain structure",
+      description: "Crystal structure of the RING domain from human BRCA1.",
+      source: "pdb",
+      url: "https://www.rcsb.org/structure/1JM7",
+      additionalData: {
+        resolution: "2.0 Å",
+        experimental_method: "X-ray diffraction",
+        release_date: "2001-07-12"
+      }
+    },
+    {
+      id: "pubmed-28585547",
+      title: "BRCA1 and genome stability",
+      description: "This review summarizes the roles of BRCA1 in maintaining genome stability, including DNA repair, cell cycle checkpoint control, and transcriptional regulation.",
+      source: "pubmed",
+      url: "https://pubmed.ncbi.nlm.nih.gov/28585547/",
+      additionalData: {
+        journal: "Annual Review of Cancer Biology",
+        publication_date: "2017 Mar",
+        pmid: "28585547"
+      }
+    },
+    {
+      id: "ucsc-chr17:43044295-43125483",
+      title: "BRCA1 gene locus",
+      description: "Genomic location of the BRCA1 gene on chromosome 17.",
+      source: "ucsc",
+      url: "https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position=chr17:43044295-43125483",
+      additionalData: {
+        chromosome: "chr17",
+        start: "43044295",
+        end: "43125483"
+      }
     }
   ],
   "p53": [
@@ -106,6 +143,30 @@ const mockResults: Record<string, ResultItem[]> = {
         length: "393 aa",
         mass: "43.7 kDa"
       }
+    },
+    {
+      id: "pdb-1tup",
+      title: "Human p53 core domain crystal structure",
+      description: "Structure of the core DNA-binding domain of human p53 tumor suppressor protein.",
+      source: "pdb",
+      url: "https://www.rcsb.org/structure/1tup",
+      additionalData: {
+        resolution: "2.2 Å",
+        experimental_method: "X-ray diffraction",
+        release_date: "1994-08-01"
+      }
+    },
+    {
+      id: "pubmed-29533785",
+      title: "p53: Structure, Function and Therapeutic Applications",
+      description: "Review discussing the structure, function, and potential therapeutic applications of p53 in cancer treatment.",
+      source: "pubmed",
+      url: "https://pubmed.ncbi.nlm.nih.gov/29533785/",
+      additionalData: {
+        journal: "Journal of Cancer",
+        publication_date: "2018 Mar 1",
+        pmid: "29533785"
+      }
     }
   ],
   "insulin": [
@@ -131,6 +192,29 @@ const mockResults: Record<string, ResultItem[]> = {
         organism: "Homo sapiens",
         location: "11p15.5"
       }
+    },
+    {
+      id: "P01308",
+      title: "Insulin",
+      description: "Insulin stimulates glucose uptake and lipid synthesis and inhibits lipolysis. It is secreted by pancreatic beta cells.",
+      source: "uniprot",
+      url: "https://www.uniprot.org/uniprot/P01308",
+      additionalData: {
+        length: "110 aa",
+        mass: "11.9 kDa"
+      }
+    },
+    {
+      id: "pdb-4ins",
+      title: "Human insulin structure",
+      description: "Crystal structure of human insulin revealing its hexameric form.",
+      source: "pdb",
+      url: "https://www.rcsb.org/structure/4ins",
+      additionalData: {
+        resolution: "1.5 Å",
+        experimental_method: "X-ray diffraction",
+        release_date: "1989-05-17"
+      }
     }
   ],
   "ATGGCGCGAT": [
@@ -152,6 +236,18 @@ const mockResults: Record<string, ResultItem[]> = {
       url: "https://www.ddbj.nig.ac.jp/getentry?database=na&accession_number=LC123456",
       additionalData: {
         released: "2022-01-10"
+      }
+    },
+    {
+      id: "blast-result",
+      title: "BLAST Results for ATGGCGCGAT",
+      description: "Sequence alignment results for ATGGCGCGAT motif.",
+      source: "ncbi",
+      url: "https://blast.ncbi.nlm.nih.gov/Blast.cgi",
+      additionalData: {
+        program: "blastn",
+        database: "nt",
+        result: "Multiple hits found in various organisms."
       }
     }
   ],
@@ -188,6 +284,115 @@ const mockResults: Record<string, ResultItem[]> = {
         stars: "2135",
         language: "R"
       }
+    },
+    {
+      id: "pdb-6vxx",
+      title: "SARS-CoV-2 spike protein",
+      description: "Structure of the SARS-CoV-2 spike glycoprotein in the prefusion conformation.",
+      source: "pdb",
+      url: "https://www.rcsb.org/structure/6VXX",
+      additionalData: {
+        resolution: "2.8 Å",
+        experimental_method: "Cryo-EM",
+        release_date: "2020-03-18"
+      }
+    },
+    {
+      id: "pubmed-32015508",
+      title: "A Novel Coronavirus from Patients with Pneumonia in China, 2019",
+      description: "Initial identification and characterization of the novel coronavirus (later named SARS-CoV-2) from patients with pneumonia in Wuhan, China.",
+      source: "pubmed",
+      url: "https://pubmed.ncbi.nlm.nih.gov/32015508/",
+      additionalData: {
+        journal: "New England Journal of Medicine",
+        publication_date: "2020 Feb 20",
+        pmid: "32015508"
+      }
+    }
+  ],
+  "1HHO": [
+    {
+      id: "pdb-1hho",
+      title: "Human Hemoglobin",
+      description: "Crystal structure of human deoxyhemoglobin at 1.74 Å resolution.",
+      source: "pdb",
+      url: "https://www.rcsb.org/structure/1HHO",
+      additionalData: {
+        resolution: "1.74 Å",
+        experimental_method: "X-ray diffraction",
+        release_date: "1993-08-11"
+      }
+    },
+    {
+      id: "P69905",
+      title: "Hemoglobin subunit alpha",
+      description: "Part of hemoglobin, responsible for oxygen transport in the blood.",
+      source: "uniprot",
+      url: "https://www.uniprot.org/uniprot/P69905",
+      additionalData: {
+        length: "142 aa",
+        mass: "15.3 kDa"
+      }
+    },
+    {
+      id: "P68871",
+      title: "Hemoglobin subunit beta",
+      description: "Beta chain of hemoglobin, responsible for oxygen transport.",
+      source: "uniprot",
+      url: "https://www.uniprot.org/uniprot/P68871",
+      additionalData: {
+        length: "147 aa",
+        mass: "16.0 kDa"
+      }
+    }
+  ],
+  "hemoglobin": [
+    {
+      id: "ENSG00000206172",
+      title: "HBA1 (ENSG00000206172)",
+      description: "Hemoglobin subunit alpha 1, part of the adult hemoglobin protein.",
+      source: "ensembl",
+      url: "https://ensembl.org/Homo_sapiens/Gene/Summary?g=ENSG00000206172",
+      additionalData: {
+        species: "Homo sapiens",
+        chromosome: "16",
+        type: "Protein coding"
+      }
+    },
+    {
+      id: "P69905",
+      title: "Hemoglobin subunit alpha",
+      description: "Hemoglobin is the oxygen-carrying protein in red blood cells, composed of two alpha and two beta chains.",
+      source: "uniprot",
+      url: "https://www.uniprot.org/uniprot/P69905",
+      additionalData: {
+        length: "142 aa",
+        mass: "15.3 kDa"
+      }
+    },
+    {
+      id: "pdb-1hho",
+      title: "Human Hemoglobin",
+      description: "Structure of human deoxyhemoglobin at high resolution.",
+      source: "pdb",
+      url: "https://www.rcsb.org/structure/1HHO",
+      additionalData: {
+        resolution: "1.74 Å",
+        experimental_method: "X-ray diffraction",
+        release_date: "1993-08-11"
+      }
+    },
+    {
+      id: "pubmed-31385757",
+      title: "Structure and function of hemoglobin",
+      description: "Review discussing the structure and function of hemoglobin, including its role in oxygen transport and allosteric regulation.",
+      source: "pubmed",
+      url: "https://pubmed.ncbi.nlm.nih.gov/31385757/",
+      additionalData: {
+        journal: "Journal of Biological Chemistry",
+        publication_date: "2019 Sep 6",
+        pmid: "31385757"
+      }
     }
   ]
 };
@@ -207,11 +412,11 @@ const defaultResults: ResultItem[] = [
   {
     id: "default-2",
     title: "Try a sample query",
-    description: "Try searching for examples like 'BRCA1', 'p53', 'insulin', 'ATGGCGCGAT', or 'coronavirus'.",
+    description: "Try searching for examples like 'BRCA1', 'p53', 'insulin', 'ATGGCGCGAT', 'coronavirus', 'hemoglobin', or '1HHO'.",
     source: "ensembl",
     url: "https://ensembl.org/",
     additionalData: {
-      examples: "BRCA1, p53, insulin"
+      examples: "BRCA1, p53, insulin, hemoglobin, 1HHO"
     }
   }
 ];
@@ -268,18 +473,33 @@ export async function generateSummary(results: ResultItem[]): Promise<string> {
       const ensemblResult = results.find(r => r.source === 'ensembl');
       const uniprotResult = results.find(r => r.source === 'uniprot');
       const ncbiResult = results.find(r => r.source === 'ncbi');
+      const pdbResult = results.find(r => r.source === 'pdb');
+      const pubmedResults = results.filter(r => r.source === 'pubmed');
+      
+      let summary = "";
       
       if (ensemblResult) {
         const additionalInfo = ensemblResult.additionalData;
-        return `${ensemblResult.title} - ${additionalInfo?.species || 'Species unknown'}${additionalInfo?.chromosome ? `, Chromosome ${additionalInfo.chromosome}` : ''}. ${ensemblResult.description.split('.')[0]}.`;
-      } else if (uniprotResult) {
-        return `${uniprotResult.title} - ${uniprotResult.additionalData?.length || ''} ${uniprotResult.additionalData?.mass ? `(${uniprotResult.additionalData.mass})` : ''}. ${uniprotResult.description.split('.')[0]}.`;
-      } else if (ncbiResult) {
-        return `${ncbiResult.title} - ${ncbiResult.additionalData?.organism || ''}. ${ncbiResult.description.split('.')[0]}.`;
+        summary += `${ensemblResult.title} - ${additionalInfo?.species || 'Species unknown'}${additionalInfo?.chromosome ? `, Chromosome ${additionalInfo.chromosome}` : ''}. `;
       }
       
-      // Fallback to the first result
-      return `${results[0].title} - ${results[0].description.split('.')[0]}.`;
+      if (uniprotResult) {
+        summary += `Protein: ${uniprotResult.title} (${uniprotResult.additionalData?.length || 'unknown length'}). `;
+      }
+      
+      if (pdbResult) {
+        summary += `Structure available in PDB (Resolution: ${pdbResult.additionalData?.resolution || 'unknown'}). `;
+      }
+      
+      if (pubmedResults.length > 0) {
+        summary += `Found ${pubmedResults.length} related publications. `;
+      }
+      
+      if (summary === "" && ncbiResult) {
+        summary = `${ncbiResult.title} - ${ncbiResult.additionalData?.organism || ''}. ${ncbiResult.description.split('.')[0]}.`;
+      }
+      
+      return summary || `Found ${results.length} results across multiple biological databases.`;
     }
     
     // Call our Python backend API
@@ -311,11 +531,18 @@ export function groupResultsBySource(results: ResultItem[]): Record<DatabaseSour
     uniprot: [],
     ebi: [],
     ddbj: [],
-    github: []
+    github: [],
+    pdb: [],
+    pubmed: [],
+    ucsc: []
   };
   
   results.forEach(result => {
-    grouped[result.source].push(result);
+    if (result.source in grouped) {
+      grouped[result.source as DatabaseSource].push(result);
+    } else {
+      console.warn(`Unknown database source: ${result.source}`);
+    }
   });
   
   return grouped;

@@ -4,8 +4,10 @@ from flask_cors import CORS
 import requests
 import json
 import time
+import re
 from Bio import Entrez
 from Bio.Blast import NCBIWWW
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 CORS(app)
@@ -42,6 +44,22 @@ def search_databases():
         github_results = search_github(query)
         results.extend(github_results)
         
+        # Search PDB
+        pdb_results = search_pdb(query)
+        results.extend(pdb_results)
+        
+        # Search PubMed
+        pubmed_results = search_pubmed(query)
+        results.extend(pubmed_results)
+        
+        # Search UCSC Genome Browser
+        ucsc_results = search_ucsc(query)
+        results.extend(ucsc_results)
+        
+        # Search DDBJ
+        ddbj_results = search_ddbj(query)
+        results.extend(ddbj_results)
+        
         # Add BLAST search if query looks like a sequence
         if is_sequence(query):
             blast_results = blast_search(query)
@@ -54,8 +72,24 @@ def search_databases():
 
 def is_sequence(query):
     """Check if query looks like a DNA/protein sequence"""
-    valid_chars = set('ATCGNU atcgnu')
-    return all(c in valid_chars for c in query) and len(query) >= 10
+    # First, check if it's in FASTA format
+    if query.startswith('>'):
+        lines = query.strip().split('\n')
+        if len(lines) > 1:
+            # Extract just the sequence part
+            sequence = ''.join(lines[1:])
+            query = sequence
+    
+    # Check if the sequence consists primarily of valid nucleotide or amino acid characters
+    nucleotide_chars = set('ATCGNU atcgnu')
+    amino_acid_chars = set('ACDEFGHIKLMNPQRSTVWY acdefghiklmnpqrstvwy')
+    
+    # Count valid characters
+    nucleotide_count = sum(1 for c in query if c in nucleotide_chars)
+    amino_acid_count = sum(1 for c in query if c in amino_acid_chars)
+    
+    # If at least 80% of the characters are valid nucleotides/amino acids
+    return (nucleotide_count / len(query) > 0.8 or amino_acid_count / len(query) > 0.8) and len(query) >= 10
 
 def search_ncbi(query):
     try:
@@ -188,26 +222,6 @@ def search_ena(query):
         print(f"ENA search error: {e}")
         return []
 
-def blast_search(sequence):
-    try:
-        print("Running BLAST search...")
-        result_handle = NCBIWWW.qblast("blastn", "nt", sequence)
-        blast_records = result_handle.read()
-        
-        return [{
-            "id": "blast-result",
-            "title": "BLAST Search Result",
-            "description": "Sequence alignment results",
-            "source": "ncbi",
-            "url": "https://blast.ncbi.nlm.nih.gov/Blast.cgi",
-            "additionalData": {
-                "result": str(blast_records)
-            }
-        }]
-    except Exception as e:
-        print(f"BLAST search error: {e}")
-        return []
-
 def search_github(query):
     try:
         response = requests.get(
@@ -244,6 +258,237 @@ def search_github(query):
         print(f"GitHub search error: {e}")
         return []
 
+def search_pdb(query):
+    try:
+        # First check if it's a direct PDB ID (4 characters, alphanumeric)
+        if re.match(r'^[a-zA-Z0-9]{4}$', query):
+            return [{
+                "id": f"pdb-{query}",
+                "title": f"PDB Structure: {query}",
+                "description": "Protein Data Bank structure",
+                "source": "pdb",
+                "url": f"https://www.rcsb.org/structure/{query}",
+                "additionalData": {
+                    "id": query,
+                    "type": "Structure"
+                }
+            }]
+        
+        # Otherwise search the PDB
+        response = requests.get(
+            f"https://search.rcsb.org/rcsbsearch/v2/query?json={{\"query\":{{\"type\":\"terminal\",\"service\":\"text\",\"parameters\":{{\"value\":\"{query}\"}}}}}}",
+        )
+        
+        if response.ok:
+            data = response.json()
+            results = []
+            
+            for item in data.get('result_set', [])[:5]:
+                pdb_id = item.get('identifier', '')
+                
+                # Get additional data
+                detail_response = requests.get(f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id}")
+                detail_data = {}
+                if detail_response.ok:
+                    detail_data = detail_response.json()
+                
+                results.append({
+                    "id": f"pdb-{pdb_id}",
+                    "title": f"PDB: {detail_data.get('struct', {}).get('title', pdb_id)}",
+                    "description": detail_data.get('struct', {}).get('pdbx_descriptor', 'Protein structure'),
+                    "source": "pdb",
+                    "url": f"https://www.rcsb.org/structure/{pdb_id}",
+                    "additionalData": {
+                        "resolution": detail_data.get('rcsb_entry_info', {}).get('resolution_combined', 'Unknown'),
+                        "experimental_method": detail_data.get('exptl', {}).get('method', 'Unknown'),
+                        "release_date": detail_data.get('rcsb_accession_info', {}).get('deposit_date', 'Unknown')
+                    }
+                })
+            
+            return results
+        return []
+    except Exception as e:
+        print(f"PDB search error: {e}")
+        return []
+
+def search_pubmed(query):
+    try:
+        handle = Entrez.esearch(db="pubmed", term=query, retmax=5)
+        record = Entrez.read(handle)
+        
+        results = []
+        for pubmed_id in record.get("IdList", []):
+            # Fetch article details
+            article_handle = Entrez.efetch(db="pubmed", id=pubmed_id, retmode="xml")
+            article_data = Entrez.read(article_handle)
+            
+            if article_data.get("PubmedArticle", []):
+                article = article_data["PubmedArticle"][0]
+                article_details = article.get("MedlineCitation", {}).get("Article", {})
+                
+                # Extract title and abstract
+                title = article_details.get("ArticleTitle", "No title available")
+                
+                abstract_text = "No abstract available"
+                if "Abstract" in article_details and "AbstractText" in article_details["Abstract"]:
+                    abstract_parts = article_details["Abstract"]["AbstractText"]
+                    if isinstance(abstract_parts, list):
+                        abstract_text = " ".join([str(part) for part in abstract_parts])
+                    else:
+                        abstract_text = str(abstract_parts)
+                
+                # Extract journal and publication date
+                journal = article_details.get("Journal", {}).get("Title", "Unknown Journal")
+                
+                pub_date = "Unknown Date"
+                if "PubDate" in article_details.get("Journal", {}).get("JournalIssue", {}).get("PubDate", {}):
+                    pub_date_parts = article_details["Journal"]["JournalIssue"]["PubDate"]
+                    pub_date = " ".join([pub_date_parts.get(k, "") for k in ["Year", "Month", "Day"] if k in pub_date_parts])
+                
+                results.append({
+                    "id": f"pubmed-{pubmed_id}",
+                    "title": title,
+                    "description": abstract_text[:250] + "..." if len(abstract_text) > 250 else abstract_text,
+                    "source": "pubmed",
+                    "url": f"https://pubmed.ncbi.nlm.nih.gov/{pubmed_id}/",
+                    "additionalData": {
+                        "journal": journal,
+                        "publication_date": pub_date,
+                        "pmid": pubmed_id
+                    }
+                })
+            
+        return results
+    except Exception as e:
+        print(f"PubMed search error: {e}")
+        return []
+
+def search_ucsc(query):
+    try:
+        # For UCSC, we'll check if it's a gene or genome region
+        if re.match(r'^chr[0-9XY]+:[0-9]+-[0-9]+$', query):  # Matches patterns like chr1:12345-67890
+            # It's a genome region
+            chrom, pos = query.split(':')
+            start, end = pos.split('-')
+            
+            return [{
+                "id": f"ucsc-{query}",
+                "title": f"Genome Region: {query}",
+                "description": f"Genomic region coordinates: {chrom}:{start}-{end}",
+                "source": "ucsc",
+                "url": f"https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position={query}",
+                "additionalData": {
+                    "chromosome": chrom,
+                    "start": start,
+                    "end": end
+                }
+            }]
+        else:
+            # Assume it's a gene symbol
+            return [{
+                "id": f"ucsc-{query}",
+                "title": f"UCSC Gene: {query}",
+                "description": f"UCSC Genome Browser entry for gene {query}",
+                "source": "ucsc",
+                "url": f"https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position={query}",
+                "additionalData": {
+                    "gene": query,
+                    "assembly": "hg38"
+                }
+            }]
+    except Exception as e:
+        print(f"UCSC search error: {e}")
+        return []
+
+def search_ddbj(query):
+    try:
+        # DDBJ doesn't have a simple REST API, so we'll make a basic request to their search
+        # This is a simplified approach - in production you'd want more robust parsing
+        url = f"https://getentry.ddbj.nig.ac.jp/getentry/na/{query}?filetype=html"
+        response = requests.get(url)
+        
+        results = []
+        
+        if response.ok and 'No such entry' not in response.text:
+            # Try to parse some basic information
+            soup = BeautifulSoup(response.text, 'lxml')
+            title_elem = soup.find('title')
+            title = title_elem.text if title_elem else f"DDBJ: {query}"
+            
+            # Get description if available
+            description = "Nucleotide sequence data from DDBJ"
+            definition_elem = soup.find('span', class_='definition')
+            if definition_elem:
+                description = definition_elem.text
+            
+            results.append({
+                "id": f"ddbj-{query}",
+                "title": title,
+                "description": description,
+                "source": "ddbj",
+                "url": f"https://getentry.ddbj.nig.ac.jp/getentry/na/{query}",
+                "additionalData": {
+                    "accession": query
+                }
+            })
+        
+        return results
+    except Exception as e:
+        print(f"DDBJ search error: {e}")
+        return []
+
+def blast_search(query):
+    try:
+        print("Running BLAST search...")
+        # Remove FASTA header if present
+        if query.startswith('>'):
+            lines = query.strip().split('\n')
+            if len(lines) > 1:
+                sequence = ''.join(lines[1:])
+            else:
+                sequence = ''
+        else:
+            sequence = query
+        
+        # Determine if it's nucleotide or protein
+        nucleotide_chars = set('ATCGNU atcgnu')
+        amino_acid_chars = set('ACDEFGHIKLMNPQRSTVWY acdefghiklmnpqrstvwy')
+        
+        nucleotide_count = sum(1 for c in sequence if c in nucleotide_chars)
+        amino_acid_count = sum(1 for c in sequence if c in amino_acid_chars)
+        
+        if nucleotide_count / len(sequence) > amino_acid_count / len(sequence):
+            program = "blastn"
+            database = "nt"
+        else:
+            program = "blastp"
+            database = "nr"
+        
+        # For longer sequences, use a shorter expectation value to speed up the search
+        evalue = 1e-3 if len(sequence) > 100 else 10
+        
+        result_handle = NCBIWWW.qblast(program, database, sequence, expect=evalue)
+        
+        # Process the results to extract useful information
+        blast_results = result_handle.read()
+        
+        # We'll return this as a special result
+        return [{
+            "id": "blast-result",
+            "title": f"BLAST {program.upper()} Results",
+            "description": f"Sequence alignment results against {database} database.",
+            "source": "ncbi",
+            "url": "https://blast.ncbi.nlm.nih.gov/Blast.cgi",
+            "additionalData": {
+                "program": program,
+                "database": database,
+                "result": blast_results[:1000] + "..." if len(blast_results) > 1000 else blast_results
+            }
+        }]
+    except Exception as e:
+        print(f"BLAST search error: {e}")
+        return []
+
 @app.route('/api/summary', methods=['POST'])
 def generate_summary():
     try:
@@ -263,25 +508,66 @@ def generate_summary():
         # Generate summary
         summary_parts = []
         
+        # Check if we have PDB results (protein structure)
+        if 'pdb' in sources:
+            count = len(sources['pdb'])
+            result = sources['pdb'][0]
+            summary_parts.append(f"Found {count} protein structure(s) in PDB.")
+            if 'additionalData' in result and 'resolution' in result['additionalData']:
+                summary_parts.append(f"Best resolution: {result['additionalData']['resolution']}.")
+        
+        # Check for gene information
         if 'ensembl' in sources:
             result = sources['ensembl'][0]
             summary_parts.append(f"Found gene {result['title']} in Ensembl database.")
-        
-        if 'uniprot' in sources:
-            result = sources['uniprot'][0]
-            summary_parts.append(f"Associated protein: {result['title']}.")
+            if 'additionalData' in result:
+                if 'chromosome' in result['additionalData']:
+                    summary_parts.append(f"Located on chromosome {result['additionalData']['chromosome']}.")
+                if 'type' in result['additionalData']:
+                    summary_parts.append(f"Gene type: {result['additionalData']['type']}.")
         
         if 'ncbi' in sources:
             result = sources['ncbi'][0]
-            summary_parts.append(f"NCBI entry: {result['title']}.")
+            summary_parts.append(f"NCBI Gene Database entry: {result['title']}.")
+            if 'additionalData' in result and 'organism' in result['additionalData']:
+                summary_parts.append(f"Organism: {result['additionalData']['organism']}.")
         
+        # Check for protein information
+        if 'uniprot' in sources:
+            result = sources['uniprot'][0]
+            summary_parts.append(f"Associated protein in UniProt: {result['title']}.")
+            if 'additionalData' in result and 'length' in result['additionalData']:
+                summary_parts.append(f"Protein length: {result['additionalData']['length']} amino acids.")
+        
+        # Check for sequence data
         if 'ebi' in sources:
             count = len(sources['ebi'])
             summary_parts.append(f"Found {count} related sequence(s) in EBI ENA.")
         
+        if 'ddbj' in sources:
+            count = len(sources['ddbj'])
+            summary_parts.append(f"Found {count} nucleotide sequence(s) in DDBJ database.")
+        
+        # Check for literature
+        if 'pubmed' in sources:
+            count = len(sources['pubmed'])
+            summary_parts.append(f"Found {count} relevant publication(s) in PubMed.")
+            if count > 0:
+                result = sources['pubmed'][0]
+                if 'additionalData' in result and 'journal' in result['additionalData']:
+                    summary_parts.append(f"Most recent in {result['additionalData']['journal']}.")
+        
+        # Check for GitHub repositories
         if 'github' in sources:
             count = len(sources['github'])
             summary_parts.append(f"Found {count} related bioinformatics repositories on GitHub.")
+            if count > 0:
+                stars = sources['github'][0]['additionalData'].get('stars', 0)
+                summary_parts.append(f"Most popular has {stars} stars.")
+        
+        # Check for BLAST results
+        if any(result['id'] == 'blast-result' for result in results):
+            summary_parts.append("BLAST search completed. View alignment results for details.")
         
         summary = " ".join(summary_parts)
         if not summary:
@@ -294,4 +580,3 @@ def generate_summary():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-

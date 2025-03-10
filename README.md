@@ -1,69 +1,68 @@
-# Welcome to your Lovable project
 
-## Project info
+# Bio_Search
 
-**URL**: https://lovable.dev/projects/9a79d90a-aa75-431a-9e43-e06247c1bdc1
+A bioinformatics search platform that allows users to search for genes, proteins, and sequences across multiple databases (Ensembl, NCBI, UniProt, EBI ENA, DDBJ, and GitHub).
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- Search across multiple biological databases
+- View results organized by database source
+- Get concise summaries of search results
+- Dark/light mode toggle
+- Responsive design
 
-**Use Lovable**
+## Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9a79d90a-aa75-431a-9e43-e06247c1bdc1) and start prompting.
+- Frontend: React, TypeScript, TailwindCSS
+- Backend: Python Flask
+- API Integrations: Ensembl, NCBI, UniProt, EBI ENA, DDBJ, GitHub
 
-Changes made via Lovable will be committed automatically to this repo.
+## Setup Instructions
 
-**Use your preferred IDE**
+### Backend (Python Flask)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1. Navigate to the `api` directory:
+   ```
+   cd api
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+2. Create a virtual environment (optional but recommended):
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-Follow these steps:
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+4. Run the Flask server:
+   ```
+   python app.py
+   ```
+   The server will start on http://localhost:5000
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Frontend (React)
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. In the project root directory, install dependencies:
+   ```
+   npm install
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+2. Run the development server:
+   ```
+   npm run dev
+   ```
+   The frontend will start on http://localhost:5173
 
-**Edit a file directly in GitHub**
+## Usage
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Enter a search term in the search bar (e.g., "BRCA1", "p53", "insulin")
+2. View the results organized by database source
+3. Check the summary for key information about your search term
 
-**Use GitHub Codespaces**
+## API Endpoints
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/9a79d90a-aa75-431a-9e43-e06247c1bdc1) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+- GET `/api/search?query=<search_term>` - Search across all databases
+- POST `/api/summary` - Generate a summary from search results

@@ -29,7 +29,8 @@ const Index = () => {
       const grouped = groupResultsBySource(searchResults);
       setGroupedResults(grouped);
       
-      const summaryText = generateSummary(searchResults);
+      // Fix: Await the promise from generateSummary before setting state
+      const summaryText = await generateSummary(searchResults);
       setSummary(summaryText);
       
       // Initialize all non-empty sections as expanded

@@ -7,8 +7,14 @@ import { LoadingState } from '../components/LoadingState';
 import { ResultItem, ResultsGrid } from '../components/ResultCard';
 import { searchBioDatabases, generateSummary, groupResultsBySource } from '../lib/api';
 import { DatabaseSource } from '../components/ResultCard';
-import { ChevronDown, ChevronUp, Database } from 'lucide-react';
+import { ChevronDown, ChevronUp, Database, AlertCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [query, setQuery] = useState<string>('');
@@ -17,19 +23,29 @@ const Index = () => {
   const [groupedResults, setGroupedResults] = useState<Record<DatabaseSource, ResultItem[]> | null>(null);
   const [summary, setSummary] = useState<string>('');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState<string>('');
+  
+  const { toast } = useToast();
   
   const handleSearch = async (searchQuery: string) => {
     setQuery(searchQuery);
     setIsSearching(true);
+    setError('');
     
     try {
+      // Show a toast notification that the search has started
+      toast({
+        title: "Searching databases...",
+        description: "This might take a few seconds.",
+      });
+      
       const searchResults = await searchBioDatabases(searchQuery);
       setResults(searchResults);
       
       const grouped = groupResultsBySource(searchResults);
       setGroupedResults(grouped);
       
-      // Fix: Await the promise from generateSummary before setting state
+      // Generate and set the summary
       const summaryText = await generateSummary(searchResults);
       setSummary(summaryText);
       
@@ -39,11 +55,32 @@ const Index = () => {
         initialExpanded[source] = items.length > 0;
       });
       setExpandedSections(initialExpanded);
+      
+      // Show success toast if results were found
+      if (searchResults.length > 0) {
+        toast({
+          title: "Search complete",
+          description: `Found ${searchResults.length} results across multiple databases.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "No results found",
+          description: "Try refining your search terms.",
+        });
+      }
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
       setGroupedResults(null);
-      setSummary('An error occurred while searching. Please try again.');
+      setSummary('');
+      setError('An error occurred while searching. Please try again.');
+      
+      toast({
+        variant: "destructive",
+        title: "Search failed",
+        description: "An error occurred while searching the databases.",
+      });
     } finally {
       setIsSearching(false);
     }
@@ -69,7 +106,7 @@ const Index = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       
-      <main className="flex-1 pt-24 px-4 sm:px-6 lg:px-8">
+      <main className="flex-1 container mx-auto pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className={`search-container transition-all duration-500 ease-out ${results.length > 0 ? 'searching' : ''}`}>
           <SearchBar 
             onSearch={handleSearch} 
@@ -77,15 +114,24 @@ const Index = () => {
             className="mb-8"
           />
           
+          {error && (
+            <Alert variant="destructive" className="mb-8">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
           {isSearching ? (
             <LoadingState />
           ) : results.length > 0 ? (
             <div className="animate-fade-in space-y-8 pb-16">
               {summary && (
-                <div className="glass-card p-4 rounded-xl mb-8">
-                  <h2 className="text-lg font-medium mb-1">Summary</h2>
-                  <p className="text-muted-foreground">{summary}</p>
-                </div>
+                <Alert>
+                  <FileText className="h-4 w-4" />
+                  <AlertTitle>Summary</AlertTitle>
+                  <AlertDescription>{summary}</AlertDescription>
+                </Alert>
               )}
               
               {groupedResults && Object.entries(groupedResults).map(([source, items]) => {
@@ -95,25 +141,27 @@ const Index = () => {
                 const isExpanded = expandedSections[source] || false;
                 
                 return (
-                  <div key={source} className="mb-8">
+                  <div key={source} className="rounded-lg border bg-card text-card-foreground shadow-sm">
                     <div 
-                      className="flex items-center justify-between mb-4 cursor-pointer"
+                      className="flex items-center justify-between p-6 cursor-pointer hover:bg-accent/50 transition-colors"
                       onClick={() => toggleSection(source)}
                     >
                       <h2 className="text-xl font-semibold flex items-center gap-2">
-                        <Database size={20} className="text-biosearch-600" />
+                        <Database size={20} className="text-primary" />
                         <span>{databaseLabels[dbSource]} Results</span>
                         <span className="ml-2 text-sm font-normal text-muted-foreground">
                           ({items.length} {items.length === 1 ? 'item' : 'items'})
                         </span>
                       </h2>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                       </Button>
                     </div>
                     
                     {isExpanded && (
-                      <ResultsGrid items={items} />
+                      <div className="p-6 pt-0">
+                        <ResultsGrid items={items} />
+                      </div>
                     )}
                   </div>
                 );

@@ -3,235 +3,295 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
 import json
+import time
+from Bio import Entrez
+from Bio.Blast import NCBIWWW
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
-# Default fallback search results
-default_results = [
-    {
-        "id": "default-1",
-        "title": "Unknown query result",
-        "description": "Your search didn't match any specific examples in our mock database. In a real implementation, we would query actual bioinformatics databases.",
-        "source": "ncbi",
-        "url": "https://www.ncbi.nlm.nih.gov/",
-        "additionalData": {
-            "note": "Mock result"
-        }
-    },
-    {
-        "id": "default-2",
-        "title": "Try a sample query",
-        "description": "Try searching for examples like 'BRCA1', 'p53', 'insulin', 'ATGGCGCGAT', or 'coronavirus'.",
-        "source": "ensembl",
-        "url": "https://ensembl.org/",
-        "additionalData": {
-            "examples": "BRCA1, p53, insulin"
-        }
-    }
-]
+# Configure Entrez
+Entrez.email = "your-email@domain.com"  # Replace with your email
 
-# Search Ensembl for gene data
-def search_ensembl(term):
+@app.route('/api/search', methods=['GET'])
+def search_databases():
+    query = request.args.get('query', '')
+    if not query:
+        return jsonify([])
+    
     try:
-        response = requests.get(f"https://rest.ensembl.org/lookup/symbol/homo_sapiens/{term}?content-type=application/json")
-        data = response.json()
+        results = []
         
-        if 'id' in data:
+        # Search NCBI
+        ncbi_results = search_ncbi(query)
+        results.extend(ncbi_results)
+        
+        # Search Ensembl
+        ensembl_results = search_ensembl(query)
+        results.extend(ensembl_results)
+        
+        # Search UniProt
+        uniprot_results = search_uniprot(query)
+        results.extend(uniprot_results)
+        
+        # Search EBI ENA
+        ena_results = search_ena(query)
+        results.extend(ena_results)
+        
+        # Search GitHub
+        github_results = search_github(query)
+        results.extend(github_results)
+        
+        # Add BLAST search if query looks like a sequence
+        if is_sequence(query):
+            blast_results = blast_search(query)
+            results.extend(blast_results)
+        
+        return jsonify(results)
+    except Exception as e:
+        print(f"Search error: {e}")
+        return jsonify([])
+
+def is_sequence(query):
+    """Check if query looks like a DNA/protein sequence"""
+    valid_chars = set('ATCGNU atcgnu')
+    return all(c in valid_chars for c in query) and len(query) >= 10
+
+def search_ncbi(query):
+    try:
+        # Search gene database
+        handle = Entrez.esearch(db="gene", term=query, retmax=5)
+        record = Entrez.read(handle)
+        
+        results = []
+        for gene_id in record["IdList"]:
+            gene_handle = Entrez.efetch(db="gene", id=gene_id, rettype="gb", retmode="xml")
+            gene_record = Entrez.read(gene_handle)
+            
+            if gene_record:
+                results.append({
+                    "id": f"ncbi-{gene_id}",
+                    "title": f"Gene: {query}",
+                    "description": str(gene_record[0].get('description', 'No description available')),
+                    "source": "ncbi",
+                    "url": f"https://www.ncbi.nlm.nih.gov/gene/{gene_id}",
+                    "additionalData": {
+                        "organism": gene_record[0].get('organism', {}).get('scientificName', 'Unknown'),
+                        "location": gene_record[0].get('locationHist', 'Unknown')
+                    }
+                })
+        
+        return results
+    except Exception as e:
+        print(f"NCBI search error: {e}")
+        return []
+
+def search_ensembl(query):
+    try:
+        response = requests.get(
+            f"https://rest.ensembl.org/lookup/symbol/homo_sapiens/{query}",
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.ok:
+            data = response.json()
             return [{
-                "id": data['id'],
-                "title": f"{data.get('display_name', term)} ({data['id']})",
-                "description": data.get('description', "No description available"),
+                "id": f"ensembl-{data['id']}",
+                "title": data.get('display_name', query),
+                "description": data.get('description', 'No description available'),
                 "source": "ensembl",
                 "url": f"https://ensembl.org/Homo_sapiens/Gene/Summary?g={data['id']}",
                 "additionalData": {
-                    "species": data.get('species', "Homo sapiens"),
-                    "chromosome": data.get('seq_region_name', "Unknown"),
-                    "type": data.get('biotype', "Unknown")
+                    "species": "Homo sapiens",
+                    "chromosome": data.get('seq_region_name', 'Unknown'),
+                    "type": data.get('biotype', 'Unknown')
                 }
             }]
         return []
     except Exception as e:
-        print(f"Ensembl API error: {e}")
+        print(f"Ensembl search error: {e}")
         return []
 
-# Search NCBI for gene data
-def search_ncbi(term):
+def search_uniprot(query):
     try:
-        response = requests.get(f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=gene&term={term}&retmode=json&retmax=5")
-        data = response.json()
+        response = requests.get(
+            f"https://rest.uniprot.org/uniprotkb/search?query={query}&format=json"
+        )
         
-        if 'esearchresult' in data and 'idlist' in data['esearchresult'] and data['esearchresult']['idlist']:
-            return [{
-                "id": gene_id,
-                "title": f"{term} ({gene_id})",
-                "description": "NCBI Gene Database Entry",
-                "source": "ncbi",
-                "url": f"https://www.ncbi.nlm.nih.gov/gene/{gene_id}",
-                "additionalData": {
-                    "organism": "Homo sapiens",  # Would be fetched from a summary API in production
-                    "id": gene_id
-                }
-            } for gene_id in data['esearchresult']['idlist']]
-        return []
-    except Exception as e:
-        print(f"NCBI API error: {e}")
-        return []
-
-# Search UniProt for protein data
-def search_uniprot(term):
-    try:
-        response = requests.get(f"https://rest.uniprot.org/uniprotkb/search?query={term}&size=5&format=json")
-        data = response.json()
-        
-        if 'results' in data and data['results']:
+        if response.ok:
+            data = response.json()
             results = []
-            for result in data['results']:
-                name = "No name"
-                if 'proteinDescription' in result and 'recommendedName' in result['proteinDescription']:
-                    if 'fullName' in result['proteinDescription']['recommendedName']:
-                        name = result['proteinDescription']['recommendedName']['fullName'].get('value', 'No name')
-                
-                description = "No description available"
-                if 'comments' in result:
-                    for comment in result['comments']:
-                        if comment['commentType'] == 'FUNCTION' and 'texts' in comment and comment['texts']:
-                            description = comment['texts'][0].get('value', description)
+            
+            for item in data.get('results', [])[:5]:
+                name = "Unknown"
+                if 'proteinDescription' in item:
+                    if 'recommendedName' in item['proteinDescription']:
+                        name = item['proteinDescription']['recommendedName'].get('fullName', {}).get('value', 'Unknown')
                 
                 results.append({
-                    "id": result['primaryAccession'],
+                    "id": f"uniprot-{item['primaryAccession']}",
                     "title": name,
-                    "description": description,
+                    "description": get_uniprot_description(item),
                     "source": "uniprot",
-                    "url": f"https://www.uniprot.org/uniprotkb/{result['primaryAccession']}",
+                    "url": f"https://www.uniprot.org/uniprotkb/{item['primaryAccession']}",
                     "additionalData": {
-                        "length": f"{result['sequence']['length']} aa" if 'sequence' in result and 'length' in result['sequence'] else "Unknown",
-                        "mass": f"{(result['sequence']['molWeight']/1000):.1f} kDa" if 'sequence' in result and 'molWeight' in result['sequence'] else "Unknown"
+                        "accession": item['primaryAccession'],
+                        "organism": item.get('organism', {}).get('scientificName', 'Unknown'),
+                        "length": item.get('sequence', {}).get('length', 'Unknown')
                     }
                 })
+            
             return results
         return []
     except Exception as e:
-        print(f"UniProt API error: {e}")
+        print(f"UniProt search error: {e}")
         return []
 
-# Search EBI ENA for sequence data
-def search_ena(term):
+def get_uniprot_description(item):
+    if 'comments' in item:
+        for comment in item['comments']:
+            if comment['commentType'] == 'FUNCTION' and 'texts' in comment:
+                return comment['texts'][0].get('value', '')
+    return 'No description available'
+
+def search_ena(query):
     try:
-        response = requests.get(f"https://www.ebi.ac.uk/ena/portal/api/search?query={term}&result=sequence&limit=5")
-        data = response.json()
+        response = requests.get(
+            f"https://www.ebi.ac.uk/ena/portal/api/search",
+            params={
+                "query": query,
+                "result": "sequence",
+                "limit": 5
+            }
+        )
         
-        if data:
-            return [{
-                "id": hit['accession'],
-                "title": f"{hit.get('description', 'ENA Sequence')} ({hit['accession']})",
-                "description": hit.get('description', "No description available"),
-                "source": "ebi",
-                "url": f"https://www.ebi.ac.uk/ena/browser/view/{hit['accession']}",
-                "additionalData": {
-                    "length": f"{hit['length']} bp" if 'length' in hit else "Unknown"
-                }
-            } for hit in data]
+        if response.ok:
+            data = response.json()
+            results = []
+            
+            for item in data:
+                results.append({
+                    "id": f"ebi-{item['accession']}",
+                    "title": item.get('description', 'No title available'),
+                    "description": item.get('description', 'No description available'),
+                    "source": "ebi",
+                    "url": f"https://www.ebi.ac.uk/ena/browser/view/{item['accession']}",
+                    "additionalData": {
+                        "length": item.get('length', 'Unknown'),
+                        "type": item.get('moleculeType', 'Unknown')
+                    }
+                })
+            
+            return results
         return []
     except Exception as e:
-        print(f"EBI ENA API error: {e}")
+        print(f"ENA search error: {e}")
         return []
 
-# Search DDBJ for sequence data (placeholder - requires implementation based on actual API)
-def search_ddbj(term):
-    # Note: This is a placeholder. DDBJ may not have a public API like this.
-    # A server-side proxy might be needed for production.
+def blast_search(sequence):
     try:
-        # In a real implementation, this would use the actual DDBJ API endpoint
-        # For now, returning an empty list
-        return []
-    except Exception as e:
-        print(f"DDBJ API error: {e}")
-        return []
-
-# Search GitHub for bioinformatics repositories
-def search_github(term):
-    try:
-        response = requests.get(f"https://api.github.com/search/repositories?q={term}+bioinformatics")
-        data = response.json()
+        print("Running BLAST search...")
+        result_handle = NCBIWWW.qblast("blastn", "nt", sequence)
+        blast_records = result_handle.read()
         
-        if 'items' in data and data['items']:
-            return [{
-                "id": str(item['id']),
-                "title": item['full_name'],
-                "description": item.get('description', "No description available"),
-                "source": "github",
-                "url": item['html_url'],
-                "additionalData": {
-                    "stars": str(item['stargazers_count']),
-                    "language": item.get('language', "Not specified")
-                }
-            } for item in data['items'][:5]]  # Limit to first 5 results
-        return []
+        return [{
+            "id": "blast-result",
+            "title": "BLAST Search Result",
+            "description": "Sequence alignment results",
+            "source": "ncbi",
+            "url": "https://blast.ncbi.nlm.nih.gov/Blast.cgi",
+            "additionalData": {
+                "result": str(blast_records)
+            }
+        }]
     except Exception as e:
-        print(f"GitHub API error: {e}")
+        print(f"BLAST search error: {e}")
         return []
 
-@app.route('/api/search', methods=['GET'])
-def search_databases():
-    term = request.args.get('query', '')
-    if not term:
-        return jsonify(default_results)
-    
-    # Run all searches in parallel (for a production app, you would use async)
-    ensembl_results = search_ensembl(term)
-    ncbi_results = search_ncbi(term)
-    uniprot_results = search_uniprot(term)
-    ena_results = search_ena(term)
-    ddbj_results = search_ddbj(term)
-    github_results = search_github(term)
-    
-    # Combine all results
-    all_results = ensembl_results + ncbi_results + uniprot_results + ena_results + ddbj_results + github_results
-    
-    # Return default results if no matches found
-    if not all_results:
-        return jsonify(default_results)
-    
-    return jsonify(all_results)
+def search_github(query):
+    try:
+        response = requests.get(
+            f"https://api.github.com/search/repositories",
+            params={
+                "q": f"{query} bioinformatics",
+                "sort": "stars",
+                "order": "desc"
+            },
+            headers={"Accept": "application/vnd.github.v3+json"}
+        )
+        
+        if response.ok:
+            data = response.json()
+            results = []
+            
+            for item in data.get('items', [])[:5]:
+                results.append({
+                    "id": f"github-{item['id']}",
+                    "title": item['full_name'],
+                    "description": item.get('description', 'No description available'),
+                    "source": "github",
+                    "url": item['html_url'],
+                    "additionalData": {
+                        "stars": item['stargazers_count'],
+                        "language": item.get('language', 'Unknown'),
+                        "topics": item.get('topics', [])
+                    }
+                })
+            
+            return results
+        return []
+    except Exception as e:
+        print(f"GitHub search error: {e}")
+        return []
 
 @app.route('/api/summary', methods=['POST'])
 def generate_summary():
-    results = request.json.get('results', [])
-    
-    if not results:
-        return jsonify({"summary": "No results found. Try refining your search."})
-    
-    # Prioritize results from certain databases
-    ensembl_result = next((r for r in results if r['source'] == 'ensembl'), None)
-    uniprot_result = next((r for r in results if r['source'] == 'uniprot'), None)
-    ncbi_result = next((r for r in results if r['source'] == 'ncbi'), None)
-    
-    if ensembl_result:
-        additional_info = ensembl_result.get('additionalData', {})
-        species = additional_info.get('species', 'Species unknown')
-        chromosome = additional_info.get('chromosome', '')
-        chrom_text = f", Chromosome {chromosome}" if chromosome else ''
-        description = ensembl_result.get('description', '').split('.')[0]
-        return jsonify({"summary": f"{ensembl_result['title']} - {species}{chrom_text}. {description}."})
-    
-    if uniprot_result:
-        additional_info = uniprot_result.get('additionalData', {})
-        length = additional_info.get('length', '')
-        mass = additional_info.get('mass', '')
-        mass_text = f" ({mass})" if mass else ''
-        description = uniprot_result.get('description', '').split('.')[0]
-        return jsonify({"summary": f"{uniprot_result['title']} - {length}{mass_text}. {description}."})
-    
-    if ncbi_result:
-        additional_info = ncbi_result.get('additionalData', {})
-        organism = additional_info.get('organism', '')
-        description = ncbi_result.get('description', '').split('.')[0]
-        return jsonify({"summary": f"{ncbi_result['title']} - {organism}. {description}."})
-    
-    # Fallback to the first result
-    description = results[0].get('description', '').split('.')[0]
-    return jsonify({"summary": f"{results[0]['title']} - {description}."})
+    try:
+        results = request.json.get('results', [])
+        
+        if not results:
+            return jsonify({"summary": "No results found. Try refining your search."})
+        
+        # Group results by source
+        sources = {}
+        for result in results:
+            source = result['source']
+            if source not in sources:
+                sources[source] = []
+            sources[source].append(result)
+        
+        # Generate summary
+        summary_parts = []
+        
+        if 'ensembl' in sources:
+            result = sources['ensembl'][0]
+            summary_parts.append(f"Found gene {result['title']} in Ensembl database.")
+        
+        if 'uniprot' in sources:
+            result = sources['uniprot'][0]
+            summary_parts.append(f"Associated protein: {result['title']}.")
+        
+        if 'ncbi' in sources:
+            result = sources['ncbi'][0]
+            summary_parts.append(f"NCBI entry: {result['title']}.")
+        
+        if 'ebi' in sources:
+            count = len(sources['ebi'])
+            summary_parts.append(f"Found {count} related sequence(s) in EBI ENA.")
+        
+        if 'github' in sources:
+            count = len(sources['github'])
+            summary_parts.append(f"Found {count} related bioinformatics repositories on GitHub.")
+        
+        summary = " ".join(summary_parts)
+        if not summary:
+            summary = "Found results across multiple biological databases. Check individual sections for details."
+        
+        return jsonify({"summary": summary})
+    except Exception as e:
+        print(f"Summary generation error: {e}")
+        return jsonify({"summary": "An error occurred while generating the summary."})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+

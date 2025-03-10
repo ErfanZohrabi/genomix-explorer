@@ -13,6 +13,9 @@ export function LoadingState() {
         <div className="text-sm text-muted-foreground text-center max-w-sm">
           Querying Ensembl, NCBI, UniProt, EBI ENA, DDBJ, and GitHub repositories
         </div>
+        <div className="text-xs text-muted-foreground text-center max-w-xs mt-2">
+          Each database API is being queried in parallel to bring you comprehensive results
+        </div>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,19 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				biosearch: {
+					50: '#edf6ff',
+					100: '#dbeeff',
+					200: '#bce1ff',
+					300: '#8ecdff',
+					400: '#5ab3ff',
+					500: '#3092ff',
+					600: '#1a73ff',
+					700: '#0d5dec',
+					800: '#104ac0',
+					900: '#154396',
+					950: '#102a5c',
 				}
 			},
 			borderRadius: {
@@ -70,25 +84,51 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
+				},
+				'fade-in': {
+					from: { opacity: '0', transform: 'translateY(10px)' },
+					to: { opacity: '1', transform: 'translateY(0)' }
+				},
+				'fade-out': {
+					from: { opacity: '1', transform: 'translateY(0)' },
+					to: { opacity: '0', transform: 'translateY(10px)' }
+				},
+				'pulse-subtle': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.8' }
+				},
+				'slide-up': {
+					from: { transform: 'translateY(20px)', opacity: '0' },
+					to: { transform: 'translateY(0)', opacity: '1' }
+				},
+				'slide-down': {
+					from: { transform: 'translateY(-20px)', opacity: '0' },
+					to: { transform: 'translateY(0)', opacity: '1' }
+				},
+				'scale-in': {
+					from: { transform: 'scale(0.95)', opacity: '0' },
+					to: { transform: 'scale(1)', opacity: '1' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out',
+				'fade-out': 'fade-out 0.3s ease-out',
+				'pulse-subtle': 'pulse-subtle 1.5s ease-in-out infinite',
+				'slide-up': 'slide-up 0.4s ease-out',
+				'slide-down': 'slide-down 0.4s ease-out',
+				'scale-in': 'scale-in 0.2s ease-out'
+			},
+			boxShadow: {
+				'glass': '0 4px 30px rgba(0, 0, 0, 0.1)',
+				'glass-hover': '0 8px 32px rgba(0, 0, 0, 0.12)'
 			}
 		}
 	},
